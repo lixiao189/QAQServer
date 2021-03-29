@@ -1,5 +1,11 @@
-group:
+group: # 聊天组
   - "闲聊组"
   - "技术组"
   - "卷王组"
   - "死宅组"
+database: # 数据库信息
+  name: "qaq_server" # 数据库名称
+  host: "127.0.0.1" # 数据库访问IP
+  port: 3306 # 数据库端口
+  user: "root" # 数据库用户名
+  pass: "" # 数据库密码
