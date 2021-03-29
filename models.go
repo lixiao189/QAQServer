@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"net"
 	"sync"
 )
@@ -23,4 +24,8 @@ type Message struct {
 type System struct { // 存储服务器后端系统数据
 	Listener    net.Listener
 	Connections sync.Map
+	MessageChan chan Message
+	Wg          sync.WaitGroup
+	CTX         context.Context    // 管理全部线程的上下文
+	Cancel      context.CancelFunc // 上下文的取消函数
 }

@@ -16,7 +16,13 @@ import (
 	"time"
 )
 
-func startListen() { // 启动监听服务
+func start() { // 启动
+	system.CTX, system.Cancel = context.WithCancel(context.Background())
+	system.MessageChan = make(chan Message, 128)
+
+	system.Wg.Add(1)
+	handleStop() // 启动对停止事件的处理
+
 	var err error
 	system.Listener, err = net.Listen("tcp", "0.0.0.0:8080")
 	if err != nil {
@@ -27,8 +33,7 @@ func startListen() { // 启动监听服务
 	}
 }
 
-func handleStop(cancel context.CancelFunc) { // 检测退出信号
-	// TODO: 用 waitgroup 不让这个函数直接退出
+func handleStop() { // 检测退出信号
 	sigs := make(chan os.Signal, 4)
 	signal.Notify(
 		sigs,
@@ -38,8 +43,8 @@ func handleStop(cancel context.CancelFunc) { // 检测退出信号
 		syscall.SIGTERM,
 	)
 	go func() {
-		<-sigs                                                 // 阻塞该代码 直到有终止程序信号被接收
-		cancel()                                               // 关闭所有的协程
+		<-sigs // 阻塞该代码 直到有终止程序信号被接收
+		system.Cancel()
 		system.Connections.Range(func(k, v interface{}) bool { // 关闭用户连接
 			_ = v.(userConnection).uconn.Close()
 			return true
@@ -47,17 +52,15 @@ func handleStop(cancel context.CancelFunc) { // 检测退出信号
 		_ = system.Listener.Close() // 关闭系统监听
 		fmt.Println("\n程序退出中")
 		time.Sleep(time.Second * 3) // 等待所有的连接关闭
-		os.Exit(0)
+		system.Wg.Done()            // 当前线程完成
 	}()
 }
 
 func manage() { // 管理连接
-	ctx, cancel := context.WithCancel(context.Background())
-	handleStop(cancel)    // 启动对停止事件的处理
-	go handleMessage(ctx) // 启动对消息的监听
+	go handleMessage() // 启动对消息的监听
 	for {
 		select {
-		case <-ctx.Done():
+		case <-system.CTX.Done():
 			return
 		default:
 			conn, err := system.Listener.Accept() // 主循环接收请求
@@ -68,32 +71,32 @@ func manage() { // 管理连接
 					loginTime: time.Now().Unix(),
 				}
 				system.Connections.Store(userConn.id, userConn) // 将用户的连接存入连接池
-				go handleConnection(&userConn, ctx)             // 开启新的线程管理连接
+				go handleConnection(&userConn)                  // 开启新的线程管理连接
 			}
 		}
 	}
 }
 
-func handleMessage(ctx context.Context) {
+func handleMessage() {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-system.CTX.Done():
 			return
 		default:
-			msg := <-messageChan // 获取一个聊天记录
+			msg := <-system.MessageChan // 获取一个聊天记录
 			go saveToDB(msg)
 			go sendToClients(msg)
 		}
 	}
 }
 
-func handleConnection(userConn *userConnection, ctx context.Context) {
+func handleConnection(userConn *userConnection) {
 	// 接收用户指令
 	clientInput := make([]byte, 512)
 	var args []string
 	for {
 		select {
-		case <-ctx.Done():
+		case <-system.CTX.Done():
 			return // 用 return 结束协程
 		default: // 如果没有程序停止信号
 			// 获取用户输入
@@ -122,7 +125,7 @@ func handleConnection(userConn *userConnection, ctx context.Context) {
 
 			if args[0] == "msg" { // 向处理信息的后台协程传入信息
 				if args[1] == "send" {
-					messageChan <- Message{
+					system.MessageChan <- Message{
 						Msg:   args[3],
 						User:  userConn.name,
 						Date:  time.Now().Unix(),
