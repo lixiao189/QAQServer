@@ -23,3 +23,9 @@ func sendToClients(msg Message) {
 		return true
 	})
 }
+
+func disconnect(connection *userConnection) {
+	promptDisconnect(connection)
+	system.Connections.Delete(connection.id) // 从连接池中删除连接
+	_ = connection.uconn.Close()
+}

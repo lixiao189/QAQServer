@@ -16,7 +16,8 @@ import (
 	"time"
 )
 
-func start() { // 启动
+func start() { // 启动程序
+	initDatabase() // 初始化数据库
 	system.CTX, system.Cancel = context.WithCancel(context.Background())
 	system.MessageChan = make(chan Message, 128)
 
@@ -102,8 +103,7 @@ func handleConnection(userConn *userConnection) {
 			// 获取用户输入
 			n, err := userConn.uconn.Read(clientInput)
 			if err != nil {
-				promptDisconnect(userConn)
-				_ = userConn.uconn.Close()
+				disconnect(userConn)
 				return
 			}
 			args = strings.Split(string(clientInput[0:n]), "&;")
@@ -111,8 +111,7 @@ func handleConnection(userConn *userConnection) {
 			// 处理用户输入
 			if args[0] == "user" {
 				if args[1] == "disconnect" {
-					promptDisconnect(userConn)
-					_ = userConn.uconn.Close()
+					disconnect(userConn)
 					return
 				}
 				if args[1] == "status" { // TODO: 日后加上心跳包功能
@@ -146,8 +145,7 @@ func handleConnection(userConn *userConnection) {
 					}
 					_, err = userConn.uconn.Write([]byte(result))
 					if err != nil {
-						promptDisconnect(userConn)
-						_ = userConn.uconn.Close()
+						disconnect(userConn)
 						return
 					}
 				}
