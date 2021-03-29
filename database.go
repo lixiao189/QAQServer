@@ -25,4 +25,9 @@ func initDatabase() {
 		fmt.Println(err)
 		os.Exit(-1)
 	}
+
+	// 添加数据表
+	if !DB.Migrator().HasTable(&Message{}) { // 自动添加数据表
+		_ = DB.Migrator().CreateTable(&Message{})
+	}
 }

@@ -13,10 +13,11 @@ type userConnection struct {
 }
 
 type Message struct {
-	ID   uint
-	Msg  string // 消息主体
-	User string // 发送者
-	Date int64  // 发送时间
+	ID    uint
+	Msg   string // 消息主体
+	User  string // 发送者
+	Group string // 消息所在的组
+	Date  int64  // 发送时间
 }
 
 type System struct { // 存储服务器后端系统数据

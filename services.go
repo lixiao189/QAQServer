@@ -1,3 +1,6 @@
+/*
+所有的后台服务代码
+*/
 package main
 
 import (
@@ -25,6 +28,7 @@ func startListen() { // 启动监听服务
 }
 
 func handleStop(cancel context.CancelFunc) { // 检测退出信号
+	// TODO: 用 waitgroup 不让这个函数直接退出
 	sigs := make(chan os.Signal, 4)
 	signal.Notify(
 		sigs,
@@ -41,18 +45,20 @@ func handleStop(cancel context.CancelFunc) { // 检测退出信号
 			return true
 		})
 		_ = system.Listener.Close() // 关闭系统监听
-		fmt.Println("\n程序退出")
+		fmt.Println("\n程序退出中")
+		time.Sleep(time.Second * 3) // 等待所有的连接关闭
 		os.Exit(0)
 	}()
 }
 
-func manageConnection() { // 管理连接
+func manage() { // 管理连接
 	ctx, cancel := context.WithCancel(context.Background())
-	handleStop(cancel) // 启动对停止事件的处理
+	handleStop(cancel)    // 启动对停止事件的处理
+	go handleMessage(ctx) // 启动对消息的监听
 	for {
 		select {
 		case <-ctx.Done():
-			break
+			return
 		default:
 			conn, err := system.Listener.Accept() // 主循环接收请求
 			if err == nil {                       // 当前连接没啥问题就处理这个连接
@@ -68,9 +74,21 @@ func manageConnection() { // 管理连接
 	}
 }
 
+func handleMessage(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			msg := <-messageChan // 获取一个聊天记录
+			go saveToDB(msg)
+			go sendToClients(msg)
+		}
+	}
+}
+
 func handleConnection(userConn *userConnection, ctx context.Context) {
 	// 接收用户指令
-	// TODO: 处理用户输入
 	clientInput := make([]byte, 512)
 	var args []string
 	for {
@@ -81,7 +99,7 @@ func handleConnection(userConn *userConnection, ctx context.Context) {
 			// 获取用户输入
 			n, err := userConn.uconn.Read(clientInput)
 			if err != nil {
-				fmt.Println(time.Now().String() + " 用户 " + userConn.id + " 下线")
+				promptDisconnect(userConn)
 				_ = userConn.uconn.Close()
 				return
 			}
@@ -90,7 +108,7 @@ func handleConnection(userConn *userConnection, ctx context.Context) {
 			// 处理用户输入
 			if args[0] == "user" {
 				if args[1] == "disconnect" {
-					fmt.Println(time.Now().String() + " 用户 " + userConn.id + " 下线")
+					promptDisconnect(userConn)
 					_ = userConn.uconn.Close()
 					return
 				}
@@ -99,15 +117,19 @@ func handleConnection(userConn *userConnection, ctx context.Context) {
 				}
 				if args[1] == "connect" {
 					userConn.name = args[2] // 设置用户名
-					fmt.Println(userConn)   // debug
 				}
 			}
 
-			if args[0] == "msg" {
+			if args[0] == "msg" { // 向处理信息的后台协程传入信息
 				if args[1] == "send" {
-
+					messageChan <- Message{
+						Msg:   args[3],
+						User:  userConn.name,
+						Date:  time.Now().Unix(),
+						Group: args[2],
+					}
 				}
-				if args[1] == "list" { // 从数据库中获取上线前的所有数据
+				if args[1] == "list" { // 从数据库中获取上线前的所有历史记录
 
 				}
 			}
@@ -121,7 +143,7 @@ func handleConnection(userConn *userConnection, ctx context.Context) {
 					}
 					_, err = userConn.uconn.Write([]byte(result))
 					if err != nil {
-						fmt.Println(time.Now().String() + " 用户 " + userConn.id + " 下线")
+						promptDisconnect(userConn)
 						_ = userConn.uconn.Close()
 						return
 					}
