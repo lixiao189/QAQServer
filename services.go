@@ -5,34 +5,13 @@ package main
 
 import (
 	"QAQServer/config"
-	"context"
-	"fmt"
 	uuid "github.com/satori/go.uuid"
-	"net"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
 )
-
-func start() { // 启动程序
-	initDatabase() // 初始化数据库
-	system.CTX, system.Cancel = context.WithCancel(context.Background())
-	system.MessageChan = make(chan Message, 128)
-
-	system.Wg.Add(1)
-	handleStop() // 启动对停止事件的处理
-
-	var err error
-	system.Listener, err = net.Listen("tcp", "0.0.0.0:8080")
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	} else {
-		fmt.Println("服务器启动")
-	}
-}
 
 func handleStop() { // 检测退出信号
 	sigs := make(chan os.Signal, 4)
@@ -45,19 +24,12 @@ func handleStop() { // 检测退出信号
 	)
 	go func() {
 		<-sigs // 阻塞该代码 直到有终止程序信号被接收
-		system.Cancel()
-		system.Connections.Range(func(k, v interface{}) bool { // 关闭用户连接
-			_ = v.(userConnection).uconn.Close()
-			return true
-		})
-		_ = system.Listener.Close() // 关闭系统监听
-		fmt.Println("\n程序退出中")
-		time.Sleep(time.Second * 3) // 等待所有的连接关闭
-		system.Wg.Done()            // 当前线程完成
+		quit()
 	}()
 }
 
 func manage() { // 管理连接
+	defer catchError()
 	go handleMessage() // 启动对消息的监听
 	for {
 		select {
@@ -79,6 +51,7 @@ func manage() { // 管理连接
 }
 
 func handleMessage() {
+	defer catchError()
 	for {
 		select {
 		case <-system.CTX.Done():
@@ -92,6 +65,7 @@ func handleMessage() {
 }
 
 func handleConnection(userConn *userConnection) {
+	defer catchError()
 	// 接收用户指令
 	clientInput := make([]byte, 512)
 	var args []string
@@ -102,11 +76,15 @@ func handleConnection(userConn *userConnection) {
 		default: // 如果没有程序停止信号
 			// 获取用户输入
 			n, err := userConn.uconn.Read(clientInput)
-			if err != nil {
+			if err != nil { // 该协程处理的客户端失去连接
 				disconnect(userConn)
 				return
 			}
 			args = strings.Split(string(clientInput[0:n]), "&;")
+			// 对切片扩容防止崩溃
+			for len(args) < 8 {
+				args = append(args, "")
+			}
 
 			// 处理用户输入
 			if args[0] == "user" {
