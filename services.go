@@ -114,9 +114,6 @@ func handleConnection(userConn *userConnection) {
 					disconnect(userConn)
 					return
 				}
-				if args[1] == "status" { // TODO: 日后加上心跳包功能
-
-				}
 				if args[1] == "connect" {
 					userConn.name = args[2] // 设置用户名
 				}
@@ -132,7 +129,7 @@ func handleConnection(userConn *userConnection) {
 					}
 				}
 				if args[1] == "list" { // 从数据库中获取上线前的所有历史记录
-
+					go sendHistoryMsg(userConn, args[2])
 				}
 			}
 
