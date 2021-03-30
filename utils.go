@@ -51,12 +51,12 @@ func catchError() {
 
 func sendHistoryMsg(connection *userConnection, groupName string) {
 	var Messages []Message
-	var result = "historyMessage&;"
+	var result = "historyMessage&;" + groupName + "&;"
 	_ = DB.Where("`group` = ? AND date <= ?", groupName, connection.loginTime).Find(&Messages)
 	for _, v := range Messages {
 		result += v.User + "&;" +
 			fmt.Sprint(time.Unix(v.Date, 0).Format("2006-01-02 15:04:05")) + "&;" +
-			v.Msg
+			v.Msg + "&;"
 	}
 	_, _ = connection.uconn.Write([]byte(result))
 }
