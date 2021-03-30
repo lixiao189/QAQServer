@@ -43,8 +43,7 @@ func manage() { // 管理连接
 					uconn:     conn,
 					loginTime: time.Now().Unix(),
 				}
-				system.Connections.Store(userConn.id, userConn) // 将用户的连接存入连接池
-				go handleConnection(&userConn)                  // 开启新的线程管理连接
+				go handleConnection(&userConn) // 开启新的线程管理连接
 			}
 		}
 	}
@@ -66,7 +65,11 @@ func handleMessage() {
 
 func handleConnection(userConn *userConnection) {
 	defer catchError()
-	// 接收用户指令
+
+	system.Connections.Store(userConn.id, userConn) // 将用户的连接存入连接池
+	promptConnect(userConn)                         // 提示上线
+
+	// 处理用户发送的数据
 	clientInput := make([]byte, 512)
 	var args []string
 	for {

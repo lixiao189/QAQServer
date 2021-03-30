@@ -9,6 +9,10 @@ func promptDisconnect(connection *userConnection) {
 	fmt.Println(time.Now().String() + " 连接 " + connection.id + " 下线")
 }
 
+func promptConnect(connection *userConnection) {
+	fmt.Println(time.Now().String() + " 连接 " + connection.id + " 上线")
+}
+
 func saveToDB(msg Message) {
 	DB.Create(&msg)
 }
@@ -18,7 +22,7 @@ func sendToClients(msg Message) {
 		"&;" + msg.User + "&;" +
 		fmt.Sprint(time.Unix(msg.Date, 0).Format("2006-01-02 15:04:05")) + "&;" + msg.Msg
 	system.Connections.Range(func(key, value interface{}) bool { // 向每个连接到的客户端上写入信息
-		conn := value.(userConnection)
+		conn := value.(*userConnection)
 		_, _ = conn.uconn.Write([]byte(result))
 		return true
 	})
@@ -27,7 +31,7 @@ func sendToClients(msg Message) {
 func quit() { // 关闭所有连接后退出
 	system.Cancel()
 	system.Connections.Range(func(k, v interface{}) bool { // 关闭用户连接
-		_ = v.(userConnection).uconn.Close()
+		_ = v.(*userConnection).uconn.Close()
 		return true
 	})
 	_ = system.Listener.Close() // 关闭系统监听
