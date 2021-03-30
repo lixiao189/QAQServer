@@ -39,6 +39,7 @@ func manage() { // 管理连接
 			conn, err := system.Listener.Accept() // 主循环接收请求
 			if err == nil {                       // 当前连接没啥问题就处理这个连接
 				userConn := userConnection{
+					name:      "lazy",
 					id:        uuid.NewV1().String(),
 					uconn:     conn,
 					loginTime: time.Now().Unix(),
