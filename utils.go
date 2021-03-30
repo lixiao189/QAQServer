@@ -52,7 +52,7 @@ func catchError() {
 func sendHistoryMsg(connection *userConnection, groupName string) {
 	var Messages []Message
 	var result = "historyMessage&;" + groupName + "&;"
-	_ = DB.Where("`group` = ? AND date <= ?", groupName, connection.loginTime).Find(&Messages)
+	_ = DB.Where("`group` = ? AND date <= ?", groupName, time.Now().Unix()).Find(&Messages)
 	for _, v := range Messages {
 		result += v.User + "&;" +
 			fmt.Sprint(time.Unix(v.Date, 0).Format("2006-01-02 15:04:05")) + "&;" +

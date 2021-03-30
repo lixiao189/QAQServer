@@ -7,10 +7,9 @@ import (
 )
 
 type userConnection struct {
-	name      string   // 连接的用户名
-	id        string   // 当前连接的标识号
-	uconn     net.Conn // 该用户的连接
-	loginTime int64    // 该用户上线的时间
+	name  string   // 连接的用户名
+	id    string   // 当前连接的标识号
+	uconn net.Conn // 该用户的连接
 }
 
 type Message struct {
