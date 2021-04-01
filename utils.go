@@ -56,12 +56,23 @@ func sendHistoryMsg(connection *userConnection, groupName string) {
 		Limit(60).
 		Where("`group` = ? AND date <= ?", groupName, time.Now().Unix()).
 		Find(&Messages)
+
+	size := 0
+	var tmpMsg Message
+	var tmpResult string
 	for index := range Messages {
-		tmpMsg := Messages[len(Messages)-1-index]
-		result += tmpMsg.User + "&;" +
-			fmt.Sprint(time.Unix(tmpMsg.Date, 0).Format("2006-01-02 15:04:05")) + "&;" +
-			tmpMsg.Msg + "&;"
+		if size > 9280 {
+			break
+		} else {
+			tmpMsg = Messages[len(Messages)-1-index]
+			tmpResult = tmpMsg.User + "&;" +
+				fmt.Sprint(time.Unix(tmpMsg.Date, 0).Format("2006-01-02 15:04:05")) + "&;" +
+				tmpMsg.Msg + "&;"
+			result += tmpResult
+			size += len([]byte(tmpResult))
+		}
 	}
+
 	_, _ = connection.uconn.Write([]byte(result))
 }
 
