@@ -49,6 +49,18 @@ func manage() { // 管理连接
 	}
 }
 
+func dropMessage() {
+	for {
+		select {
+		case <-system.CTX.Done():
+			return
+		default:
+			DB.Where("date < ?", time.Now().Unix()-3600*24*3).Delete(Message{})
+			time.Sleep(time.Hour * 24 * 3) // 每隔3天清理一次消息记录
+		}
+	}
+}
+
 func handleMessage() {
 	defer catchError()
 	for {
@@ -70,7 +82,7 @@ func handleConnection(userConn *userConnection) {
 	promptConnect(userConn)                         // 提示上线
 
 	// 处理用户发送的数据
-	clientInput := make([]byte, 512)
+	clientInput := make([]byte, 128)
 	var args []string
 	for {
 		select {

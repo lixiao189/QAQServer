@@ -30,4 +30,6 @@ func initDatabase() {
 	if !DB.Migrator().HasTable(&Message{}) { // 自动添加数据表
 		_ = DB.Migrator().CreateTable(&Message{})
 	}
+
+	go dropMessage() // 定期清理后台数据库
 }

@@ -52,11 +52,15 @@ func catchError() {
 func sendHistoryMsg(connection *userConnection, groupName string) {
 	var Messages []Message
 	var result = "historyMessage&;" + groupName + "&;"
-	_ = DB.Where("`group` = ? AND date <= ?", groupName, time.Now().Unix()).Find(&Messages)
-	for _, v := range Messages {
-		result += v.User + "&;" +
-			fmt.Sprint(time.Unix(v.Date, 0).Format("2006-01-02 15:04:05")) + "&;" +
-			v.Msg + "&;"
+	_ = DB.Order("id DESC").
+		Limit(60).
+		Where("`group` = ? AND date <= ?", groupName, time.Now().Unix()).
+		Find(&Messages)
+	for index := range Messages {
+		tmpMsg := Messages[len(Messages)-1-index]
+		result += tmpMsg.User + "&;" +
+			fmt.Sprint(time.Unix(tmpMsg.Date, 0).Format("2006-01-02 15:04:05")) + "&;" +
+			tmpMsg.Msg + "&;"
 	}
 	_, _ = connection.uconn.Write([]byte(result))
 }
