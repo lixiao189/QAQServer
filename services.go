@@ -56,7 +56,7 @@ func dropMessage() {
 			return
 		default:
 			DB.Where("date < ?", time.Now().Unix()-3600*24*3).Delete(Message{})
-			time.Sleep(time.Hour * 24 * 3) // 每隔3天清理一次消息记录
+			time.Sleep(time.Hour) // 每隔一小时清理一次消息记录
 		}
 	}
 }
