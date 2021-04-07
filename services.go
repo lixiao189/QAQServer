@@ -4,7 +4,6 @@
 package main
 
 import (
-	"QAQServer/config"
 	uuid "github.com/satori/go.uuid"
 	"os"
 	"os/signal"
@@ -30,7 +29,7 @@ func handleStop() { // 检测退出信号
 
 func manage() { // 管理连接
 	defer catchError()
-	go handleMessage() // 启动对消息的监听
+	go handlePackage() // 处理接收包的服务
 	for {
 		select {
 		case <-system.CTX.Done():
@@ -38,12 +37,11 @@ func manage() { // 管理连接
 		default:
 			conn, err := system.Listener.Accept() // 主循环接收请求
 			if err == nil {                       // 当前连接没啥问题就处理这个连接
-				userConn := userConnection{
+				go handleConnection(&userConnection{
 					name:  "lazy",
 					id:    uuid.NewV1().String(),
 					uconn: conn,
-				}
-				go handleConnection(&userConn) // 开启新的线程管理连接
+				})
 			}
 		}
 	}
@@ -61,16 +59,42 @@ func dropMessage() {
 	}
 }
 
-func handleMessage() {
+func handlePackage() {
 	defer catchError()
 	for {
 		select {
 		case <-system.CTX.Done():
 			return
 		default:
-			msg := <-system.MessageChan // 获取一个聊天记录
-			go saveToDB(msg)
-			go sendToClients(msg)
+			packageData := <-system.PackageChan
+			args := strings.Split(packageData, "&;")
+			for len(args) < 8 { // 为了防止代码崩溃往后面填充空白参数
+				args = append(args, "")
+			}
+
+			result, _ := system.Connections.Load(args[0])
+			userConn := result.(*userConnection)
+			if args[1] == "user" {
+				if args[2] == "named" {
+					// 设置该连接的用户昵称
+					userConn.name = args[3]
+				}
+			}
+
+			if args[1] == "msg" {
+				if args[2] == "list" {
+					sendHistoryMsg(userConn)
+				}
+				if args[2] == "send" {
+					msg := Message{
+						Msg:  args[3],
+						User: userConn.name,
+						Date: time.Now().Unix(),
+					}
+					saveToDB(msg)      // 将消息存到数据库中
+					sendToClients(msg) // 将消息发给所有客户端
+				}
+			}
 		}
 	}
 }
@@ -82,62 +106,36 @@ func handleConnection(userConn *userConnection) {
 	promptConnect(userConn)                         // 提示上线
 
 	// 处理用户发送的数据
-	clientInput := make([]byte, 128)
-	var args []string
+	clientData := make([]byte, 64)
+	isStarted := false // 包是否开始
+	packageData := ""
 	for {
 		select {
 		case <-system.CTX.Done():
-			return // 用 return 结束协程
-		default: // 如果没有程序停止信号
+			return
+		default:
 			// 获取用户输入
-			n, err := userConn.uconn.Read(clientInput)
-			if err != nil { // 该协程处理的客户端失去连接
+			n, err := userConn.uconn.Read(clientData)
+			if err != nil {
+				// 该协程处理的客户端失去连接
 				disconnect(userConn)
 				return
 			}
-			args = strings.Split(string(clientInput[0:n]), "&;")
-			// 对切片扩容防止崩溃
-			for len(args) < 8 {
-				args = append(args, "")
-			}
+			for i := 0; i < n; i++ {
+				if clientData[i] == '{' {
+					isStarted = true
+					packageData += userConn.id + "&;"
+					continue
+				}
+				if clientData[i] == '}' {
+					isStarted = false
+					system.PackageChan <- packageData
+					packageData = "" // 上一个包已经结束 清空包的内容
+					continue
+				}
 
-			// 处理用户输入
-			if args[0] == "user" {
-				if args[1] == "disconnect" {
-					disconnect(userConn)
-					return
-				}
-				if args[1] == "connect" {
-					userConn.name = args[2] // 设置用户名
-				}
-			}
-
-			if args[0] == "msg" { // 向处理信息的后台协程传入信息
-				if args[1] == "send" {
-					system.MessageChan <- Message{
-						Msg:   args[3],
-						User:  userConn.name,
-						Date:  time.Now().Unix(),
-						Group: args[2],
-					}
-				}
-				if args[1] == "list" { // 从数据库中获取上线前的所有历史记录
-					go sendHistoryMsg(userConn, args[2])
-				}
-			}
-
-			if args[0] == "group" {
-				if args[1] == "list" { // 获取当前的所有小组
-					groups := config.Config.GetStringSlice("group")
-					result := "group&;"
-					for _, v := range groups {
-						result += v + "&;"
-					}
-					_, err = userConn.uconn.Write([]byte(result))
-					if err != nil {
-						disconnect(userConn)
-						return
-					}
+				if isStarted {
+					packageData += string(clientData[i])
 				}
 			}
 		}

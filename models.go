@@ -13,17 +13,16 @@ type userConnection struct {
 }
 
 type Message struct {
-	ID    uint
-	Msg   string // 消息主体
-	User  string // 发送者
-	Group string // 消息所在的组
-	Date  int64  // 发送时间
+	ID   uint
+	Msg  string // 消息主体
+	User string // 发送者
+	Date int64  // 发送时间
 }
 
 type System struct { // 存储服务器后端系统数据
 	Listener    net.Listener
-	Connections sync.Map
-	MessageChan chan Message
+	Connections sync.Map    // 所用的用户连接
+	PackageChan chan string // 传递数据包的信道
 	Wg          sync.WaitGroup
 	CTX         context.Context    // 管理全部线程的上下文
 	Cancel      context.CancelFunc // 上下文的取消函数

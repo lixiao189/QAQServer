@@ -14,7 +14,7 @@ func main() {
 	// 初始化程序
 	initDatabase() // 初始化数据库
 	system.CTX, system.Cancel = context.WithCancel(context.Background())
-	system.MessageChan = make(chan Message, 128)
+	system.PackageChan = make(chan string, 128)
 	system.Wg.Add(1)
 	var err error
 	system.Listener, err = net.Listen("tcp", "0.0.0.0:8080")
