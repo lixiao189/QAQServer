@@ -91,8 +91,8 @@ func handlePackage() {
 						User: userConn.name,
 						Date: time.Now().Unix(),
 					}
-					saveToDB(msg)      // 将消息存到数据库中
-					sendToClients(msg) // 将消息发给所有客户端
+					saveToDB(msg)                // 将消息存到数据库中
+					sendToClients(msg, userConn) // 将消息发给所有客户端
 				}
 			}
 		}

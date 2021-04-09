@@ -17,13 +17,15 @@ func saveToDB(msg Message) {
 	DB.Create(&msg)
 }
 
-func sendToClients(msg Message) {
+func sendToClients(msg Message, userConn *userConnection) {
 	result := "{msg&;" +
 		msg.User + "&;" +
 		time.Unix(msg.Date, 0).Format("2006-01-02 15:04:05") + "&;" + msg.Msg + "}"
 	system.Connections.Range(func(key, value interface{}) bool { // 向每个连接到的客户端上写入信息
 		conn := value.(*userConnection)
-		_, _ = conn.uconn.Write([]byte(result))
+		if userConn.id != key {
+			_, _ = conn.uconn.Write([]byte(result))
+		}
 		return true
 	})
 }
