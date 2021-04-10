@@ -55,7 +55,7 @@ func sendHistoryMsg(connection *userConnection) {
 	var Messages []Message
 	var result = "{msghistory&;"
 	_ = DB.Order("id DESC").
-		Limit(20).
+		Limit(60).
 		Where("date <= ?", time.Now().Unix()).
 		Find(&Messages)
 	var tmpMsg Message
