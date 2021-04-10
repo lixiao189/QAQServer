@@ -108,7 +108,7 @@ func handleConnection(userConn *userConnection) {
 	// 处理用户发送的数据
 	clientData := make([]byte, 64)
 	isStarted := false // 包是否开始
-	packageData := ""
+	var packageData []byte
 	for {
 		select {
 		case <-system.CTX.Done():
@@ -124,18 +124,17 @@ func handleConnection(userConn *userConnection) {
 			for i := 0; i < n; i++ {
 				if clientData[i] == '{' {
 					isStarted = true
-					packageData += userConn.id + "&;"
 					continue
 				}
 				if clientData[i] == '}' {
 					isStarted = false
-					system.PackageChan <- packageData
-					packageData = "" // 上一个包已经结束 清空包的内容
+					system.PackageChan <- userConn.id + "&;" + string(packageData)
+					packageData = nil // 上一个包已经结束 清空包的内容
 					continue
 				}
 
 				if isStarted {
-					packageData += string(clientData[i])
+					packageData = append(packageData, clientData[i])
 				}
 			}
 		}

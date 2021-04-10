@@ -64,7 +64,10 @@ func sendHistoryMsg(connection *userConnection) {
 		tmpMsg = Messages[len(Messages)-1-index]
 		tmpResult = tmpMsg.User + "&;" +
 			time.Unix(tmpMsg.Date, 0).Format("2006-01-02 15:04:05") + "&;" +
-			tmpMsg.Msg + "&;"
+			tmpMsg.Msg
+		if index != len(Messages)-1 {
+			tmpResult += "&;"
+		}
 		result += tmpResult
 	}
 	result += "}"
