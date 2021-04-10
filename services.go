@@ -28,7 +28,7 @@ func handleStop() { // 检测退出信号
 }
 
 func manage() { // 管理连接
-	defer catchError()
+	defer catchError("manage")
 	go handlePackage() // 处理接收包的服务
 	for {
 		select {
@@ -60,7 +60,7 @@ func dropMessage() {
 }
 
 func handlePackage() {
-	defer catchError()
+	defer catchError("handlePackage")
 	for {
 		select {
 		case <-system.CTX.Done():
@@ -100,7 +100,7 @@ func handlePackage() {
 }
 
 func handleConnection(userConn *userConnection) {
-	defer catchError()
+	defer catchError("handleConnection")
 
 	system.Connections.Store(userConn.id, userConn) // 将用户的连接存入连接池
 	promptConnect(userConn)                         // 提示上线

@@ -42,10 +42,10 @@ func quit() { // 关闭所有连接后退出
 	system.Wg.Done()            // 所有线程完成
 }
 
-func catchError() {
+func catchError(funcName string) {
 	err := recover()
 	if err != nil {
-		fmt.Println("检测到崩溃")
+		fmt.Printf("检测到函数%v崩溃\n", funcName)
 		fmt.Println(err)
 		quit()
 	}
