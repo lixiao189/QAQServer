@@ -72,8 +72,13 @@ func handlePackage() {
 				args = append(args, "")
 			}
 
-			result, _ := system.Connections.Load(args[0])
-			userConn := result.(*userConnection)
+			result, err := system.Connections.Load(args[0])
+			var userConn *userConnection
+			if !err {
+				continue // 该用户已经下线了
+			} else {
+				userConn = result.(*userConnection)
+			}
 			if args[1] == "user" {
 				if args[2] == "named" {
 					// 设置该连接的用户昵称
